@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer</title>
+    <style>
+        #view-pdf-btn {
+            display: none; /* Hide the button by default */
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="file-input" accept="application/pdf">
+    <button id="view-pdf-btn">View PDF</button>
+    <iframe id="pdf-viewer" style="width:100%; height:100vh;" hidden></iframe>
+
+    <script src="app.js"></script>
+</body>
+</html>

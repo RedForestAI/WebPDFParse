@@ -40,7 +40,6 @@ def identify_columns(rects, column_threshold):
 
     if current_column:
         columns.append(current_column)
-
     return columns
 
 def group_images_into_image(rects, threshold):
@@ -380,6 +379,7 @@ def subtyping_paragraphs(element: Element):
 def analyze_pdf(path):
     
     # Open the PDF
+    print(path)
     pdf = pdfplumber.open(str(path))
     # pngs = [cv2.imread(png) for png in pngs_files]
     pngs = [np.array(page.to_image(resolution=500).original) for page in pdf.pages]

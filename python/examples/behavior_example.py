@@ -1,2 +1,9 @@
+import pathlib
+import os
+
 import webpdfparse
-webpdfparse.analyze_pdf("behavior_mummy-1.pdf")
+
+# Get the absolute path
+CWD = pathlib.Path(os.path.abspath(__file__)).parent
+
+webpdfparse.analyze_pdf(CWD / "behavior_mummy-1.pdf")

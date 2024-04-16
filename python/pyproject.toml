@@ -16,6 +16,10 @@ classifiers = [
 ]
 
 dependencies = [
+    'pdfplumber',
+    'pandas',
+    'imutils',
+    'dataclasses_json',
 ]
 
 [project.urls]

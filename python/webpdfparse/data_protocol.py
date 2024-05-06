@@ -37,3 +37,9 @@ class PassageMetaData(DataClassJsonMixin):
 class Session(DataClassJsonMixin):
     pid: int
     passages: List[PassageMetaData]
+
+
+@dataclass
+class ParseResults:
+    element: Element
+    images: List[np.ndarray]

@@ -11,7 +11,8 @@ colormap = {
     "image": (0, 0, 255),
     "heading": (0, 255, 255),
     "line": (255, 0, 0),
-    "word": (0, 255, 0)
+    "word": (0, 255, 0),
+    # 'title': (255, 0, 255)
 }
 
 # First, let's identify the paragraphs

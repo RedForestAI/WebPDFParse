@@ -7,7 +7,7 @@ import os
 import numpy as np
 from typing import List
 
-from .data_protocol import Element
+from .data_protocol import Element, ParseResults
 from .vis import draw_element
 
 CWD = pathlib.Path(os.path.abspath(__file__)).parent
@@ -376,10 +376,9 @@ def subtyping_paragraphs(element: Element):
             # else:
             #     child['type'] = "unknown"
         
-def analyze_pdf(path):
+def analyze_pdf(path: pathlib.Path):
     
     # Open the PDF
-    print(path)
     pdf = pdfplumber.open(str(path))
     # pngs = [cv2.imread(png) for png in pngs_files]
     pngs = [np.array(page.to_image(resolution=500).original) for page in pdf.pages]
@@ -393,13 +392,13 @@ def analyze_pdf(path):
     children = []
     for idx, page in enumerate(pdf.pages):
         child = process_pdf(idx, page, pngs[idx])
-        draw_element(pngs[idx], child, height=pngs[idx].shape[0], width=pngs[idx].shape[1])
+        # draw_element(pngs[idx], child, height=pngs[idx].shape[0], width=pngs[idx].shape[1])
         children.append(child)
 
     parent_element.children = children
 
     # Typing the paragraphs
-    subtyping_paragraphs(parent_element)
+    # subtyping_paragraphs(parent_element)
 
     # Save to JSON
     # JSON_OUTPUT_DIR = DATASET_DIR / 'redforest' / 'pdfs' / 'json'
@@ -408,8 +407,8 @@ def analyze_pdf(path):
     # with open(output_fp, "w") as f:
     #     f.write(parent_element.to_json(indent=4))
 
-    # Display the images
-    for id, img in enumerate(pngs):
-        cv2.imshow(f"Page {id}", imutils.resize(img, width=700))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # return {'element': parent_element, 'images': pngs}
+    return ParseResults(
+        element=parent_element,
+        images=pngs
+    )

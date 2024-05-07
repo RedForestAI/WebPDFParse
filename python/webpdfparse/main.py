@@ -392,7 +392,6 @@ def analyze_pdf(path: pathlib.Path):
     children = []
     for idx, page in enumerate(pdf.pages):
         child = process_pdf(idx, page, pngs[idx])
-        # draw_element(pngs[idx], child, height=pngs[idx].shape[0], width=pngs[idx].shape[1])
         children.append(child)
 
     parent_element.children = children

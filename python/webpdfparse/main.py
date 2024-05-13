@@ -228,6 +228,7 @@ def process_pdf(idx, page, png) -> Element:
             # "y": int(y0)/page_height,
             # "width": int(x1 - x0)/page_width,
             # "height": int(y1 - y0)/page_height,
+            'text': line['text'],
             "x": line['x0']/page_width,
             "y": line['top']/page_height,
             "width": (line['x1'] - line['x0'])/page_width,
@@ -278,16 +279,30 @@ def process_pdf(idx, page, png) -> Element:
             type='line',
             top_left=(line['x'], line['y']),
             bottom_right=(line['x'] + line['width'], line['y'] + line['height']),
-            meta_data={'size': line['size']}
+            meta_data={'size': line['size'], 'text': line['text']}
         ))
 
     # Assign words to the lines
+    debug = False
     for word in words_rect:
         # (x0, y0), (x1, y1) = coord_to_pixel(word, page_width, page_height, png.shape[1], png.shape[0])
         # centroid = ((x0 + x1) // 2, (y0 + y1) // 2)
+        if word['text'] == 'Ancient':
+            # import pdb; pdb.set_trace()
+            debug = True
+        else:
+            debug = False
+
         x0, y0, x1, y1 = word['x'], word['y'], word['x'] + word['width'], word['y'] + word['height']
         centroid = ((x0 + x1) / 2, (y0 + y1) / 2)
         for line in lines:
+
+            if debug:
+                print(f"Word: {word['text']}")
+                print(f"Line: {line.top_left}, {line.bottom_right} {line.meta_data['text']}")
+                print(f"Centroid: {centroid}")
+                print(f"Line: {line.top_left[0] <= centroid[0]} {line.top_left[1] <= centroid[1]} {line.bottom_right[0] >= centroid[0]} {line.bottom_right[1] >= centroid[1]}")
+
             if line.top_left[0] <= centroid[0] and line.top_left[1] <= centroid[1] and line.bottom_right[0] >= centroid[0] and line.bottom_right[1] >= centroid[1]:
                 wordElement = Element(
                     type='word',
@@ -297,6 +312,7 @@ def process_pdf(idx, page, png) -> Element:
                     meta_data={'height': word['height']}
                 )
                 line.children.append(wordElement)
+                break
 
     # Sort the lines
     lines = sorted(lines, key=lambda l: (l.top_left[1], l.top_left[0]))
@@ -314,16 +330,16 @@ def process_pdf(idx, page, png) -> Element:
                 p.children.append(line)
 
     # Remove outlier words (height bigger than median by 2 std)
-    for p in paragraphs:
-        heights = []
-        for line in p.children:
-            for word in line.children:
-                heights.append(word.meta_data['height'])
+    # for p in paragraphs:
+    #     heights = []
+    #     for line in p.children:
+    #         for word in line.children:
+    #             heights.append(word.meta_data['height'])
 
-        median = np.median(heights)
-        std = np.std(heights)
-        for line in p.children:
-            line.children = [word for word in line.children if word.meta_data['height'] <= median + 2*std]
+    #     median = np.median(heights)
+    #     std = np.std(heights)
+    #     for line in p.children:
+    #         line.children = [word for word in line.children if word.meta_data['height'] <= median + 2*std]
 
     # Set the end of lines to be the last word's end
     for p in paragraphs:

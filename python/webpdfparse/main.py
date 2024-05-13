@@ -21,27 +21,6 @@ def coord_to_pixel(coord, page_width, page_height, img_width, img_height):
     y1 = (coord["bottom"] / page_height) * img_height
     return (int(x0), int(y0)), (int(x1), int(y1))
 
-def identify_columns(rects, column_threshold):
-    # Sort rects by their horizontal (x) position
-    sorted_by_x = sorted(rects, key=lambda rect: rect['x'])
-
-    columns = []
-    current_column = [sorted_by_x[0]]
-
-    for rect in sorted_by_x[1:]:
-        last_rect = current_column[-1]
-
-        # Check if the current rect is within the same column
-        if abs(rect['x'] - last_rect['x']) < column_threshold:
-            current_column.append(rect)
-        else:
-            columns.append(current_column)
-            current_column = [rect]
-
-    if current_column:
-        columns.append(current_column)
-    return columns
-
 def group_images_into_image(rects, threshold):
     images = []
 
@@ -89,6 +68,28 @@ def group_images_into_image(rects, threshold):
         images[images.index(image_group)] = image
 
     return images
+
+def identify_columns(rects, column_threshold):
+    # Sort rects by their horizontal (x) position
+    sorted_by_x = sorted(rects, key=lambda rect: rect['x'])
+
+    columns = []
+    current_column = [sorted_by_x[0]]
+
+    for rect in sorted_by_x[1:]:
+        last_rect = current_column[-1]
+
+        # Check if the current rect is within the same column
+        if abs(rect['x'] - last_rect['x']) < column_threshold:
+            current_column.append(rect)
+        else:
+            columns.append(current_column)
+            current_column = [rect]
+
+    if current_column:
+        columns.append(current_column)
+
+    return columns
 
 def group_lines_into_paragraphs(rects, column_threshold, vertical_threshold):
     paragraphs = []
@@ -140,22 +141,22 @@ def filter_paragraphs(paragraphs, image_rects):
                 is_paragraph_within_image = True
                 break
 
-        for jdx, paragraph_a in enumerate(paragraphs):
-            if idx == jdx:
-                continue
+        # for jdx, paragraph_a in enumerate(paragraphs):
+        #     if idx == jdx:
+        #         continue
 
-            # Compute Union over Intersection (IoU) between the paragraph and another paragraph
-            iou = compute_iou(paragraph, paragraph_a)
-            if iou > 0.01:
+        #     # Compute Union over Intersection (IoU) between the paragraph and another paragraph
+        #     iou = compute_iou(paragraph, paragraph_a)
+        #     if iou > 0.01:
 
-                # Determine which paragraph is larger
-                area_a = paragraph['width'] * paragraph['height']
-                area_b = paragraph_a['width'] * paragraph_a['height']
-                if area_a > area_b:
-                    continue
-                else:
-                    is_paragraph_within_image = True
-                    break
+        #         # Determine which paragraph is larger
+        #         area_a = paragraph['width'] * paragraph['height']
+        #         area_b = paragraph_a['width'] * paragraph_a['height']
+        #         if area_a > area_b:
+        #             continue
+        #         else:
+        #             is_paragraph_within_image = True
+        #             break
 
         if not is_paragraph_within_image:
             filtered_paragraphs.append(paragraph)
@@ -216,11 +217,12 @@ def process_pdf(idx, page, png) -> Element:
         })
 
     # Extract the text from the page and draw the rect
-    text = page.extract_text_lines(layout=True)
+    text = page.extract_text_lines(layout=True, y_tolerance=0)
     line_rects = []
     for line in text:
         # (x0, y0), (x1, y1) = coord_to_pixel(line, page_width, page_height, png.shape[1], png.shape[0])
         # cv2.rectangle(png, (int(x0), int(y0)), (int(x1), int(y1)), (0, 255, 0), 5)
+        # cv2.rectangle(png, (int(line['x0']), int(line['top'])), (int(line['x1']), int(line['bottom'])), (0, 255, 0), 5)
         line_rects.append({
             # "x": int(x0)/page_width,
             # "y": int(y0)/page_height,
@@ -234,7 +236,7 @@ def process_pdf(idx, page, png) -> Element:
         })
 
     # Group the lines into paragraphs
-    paragraphs_lines = group_lines_into_paragraphs(line_rects, column_threshold=0.1, vertical_threshold=0.01)
+    paragraphs_lines = group_lines_into_paragraphs(line_rects, column_threshold=0.05, vertical_threshold=0.01)
     paragraph_rects = []
     for paragraph in paragraphs_lines:
         # Draw a rect around the paragraph

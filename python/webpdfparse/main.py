@@ -93,8 +93,11 @@ def identify_columns(rects, column_threshold):
 
 def group_lines_into_paragraphs(rects, column_threshold, vertical_threshold):
     paragraphs = []
+
+    columns = identify_columns(rects, column_threshold)
+    column_idx = []
     
-    for column in identify_columns(rects, column_threshold):
+    for idx, column in enumerate(columns):
         # Sort the rects in this column by their vertical (y) position
         sorted_by_y = sorted(column, key=lambda rect: rect['y'])
         current_paragraph = [sorted_by_y[0]]
@@ -108,11 +111,13 @@ def group_lines_into_paragraphs(rects, column_threshold, vertical_threshold):
             else:
                 paragraphs.append(current_paragraph)
                 current_paragraph = [rect]
+                column_idx.append(idx)
 
         if current_paragraph:
             paragraphs.append(current_paragraph)
+            column_idx.append(idx)
 
-    return paragraphs
+    return paragraphs, column_idx
 
 def compute_iou(a_rect, b_rect):
     x_left = max(a_rect['x'], b_rect['x'])
@@ -141,27 +146,44 @@ def filter_paragraphs(paragraphs, image_rects):
                 is_paragraph_within_image = True
                 break
 
-        # for jdx, paragraph_a in enumerate(paragraphs):
-        #     if idx == jdx:
-        #         continue
+        for jdx, paragraph_a in enumerate(paragraphs):
+            if idx == jdx:
+                continue
 
-        #     # Compute Union over Intersection (IoU) between the paragraph and another paragraph
-        #     iou = compute_iou(paragraph, paragraph_a)
-        #     if iou > 0.01:
+            # Compute Union over Intersection (IoU) between the paragraph and another paragraph
+            iou = compute_iou(paragraph, paragraph_a)
+            if iou > 0.01:
 
-        #         # Determine which paragraph is larger
-        #         area_a = paragraph['width'] * paragraph['height']
-        #         area_b = paragraph_a['width'] * paragraph_a['height']
-        #         if area_a > area_b:
-        #             continue
-        #         else:
-        #             is_paragraph_within_image = True
-        #             break
+                # Determine which paragraph is larger
+                area_a = paragraph['width'] * paragraph['height']
+                area_b = paragraph_a['width'] * paragraph_a['height']
+                if area_a > area_b:
+                    continue
+                else:
+                    is_paragraph_within_image = True
+                    break
 
         if not is_paragraph_within_image:
             filtered_paragraphs.append(paragraph)
 
     return filtered_paragraphs
+
+# Compute the total words for each parent element
+def compute_total_words(element: Element):
+
+    for e in element.children:
+        compute_total_words(e)
+
+    if element.type in ['body', 'page', 'paragraph', 'caption', 'quote', 'line']:
+        element.total_words = sum([e.total_words for e in element.children])
+
+# Generate address for all elements
+def generate_address(element: Element, address: str):
+
+    element.address = address
+
+    for i,e in enumerate(element.children):
+        generate_address(e, f'{address}.{i}')
 
 def process_pdf(idx, page, png) -> Element:
     # Extract the images from the page
@@ -237,9 +259,9 @@ def process_pdf(idx, page, png) -> Element:
         })
 
     # Group the lines into paragraphs
-    paragraphs_lines = group_lines_into_paragraphs(line_rects, column_threshold=0.05, vertical_threshold=0.01)
+    paragraphs_lines, column_idx = group_lines_into_paragraphs(line_rects, column_threshold=0.05, vertical_threshold=0.01)
     paragraph_rects = []
-    for paragraph in paragraphs_lines:
+    for paragraph, column_id in zip(paragraphs_lines, column_idx):
         # Draw a rect around the paragraph
         x0 = min([rect['x'] for rect in paragraph])
         y0 = min([rect['y'] for rect in paragraph])
@@ -255,7 +277,8 @@ def process_pdf(idx, page, png) -> Element:
             "width": x1 - x0,
             "height": y1 - y0,
             'lines': paragraph,
-            'page': idx
+            'page': idx,
+            'column_id': column_id,
         })
 
     # Filter out paragraphs that are entirely within an image or another paragraph
@@ -267,10 +290,14 @@ def process_pdf(idx, page, png) -> Element:
             type='paragraph',
             top_left=(p['x'], p['y']),
             bottom_right=(p['x'] + p['width'], p['y'] + p['height']),
+            meta_data={'column_id': p['column_id']},
         )) 
 
+    # Sort by column first, then by vertical position
+    # paragraphs = sorted(paragraphs, key=lambda p: (p.meta_data['column_id'], p.top_left[1]))
+
     # Sort the paragraphs by their vertical (y) position and leftmost
-    paragraphs = sorted(paragraphs, key=lambda p: (p.top_left[1], p.top_left[0]))
+    # paragraphs = sorted(paragraphs, key=lambda p: (p.top_left[1], p.top_left[0]))
 
     # Create line elements
     lines = []
@@ -296,7 +323,8 @@ def process_pdf(idx, page, png) -> Element:
                     top_left=(x0, y0),
                     bottom_right=(x1, y1),
                     value=word['text'],
-                    meta_data={'height': word['height']}
+                    meta_data={'height': word['height']},
+                    total_words=1
                 )
                 line.children.append(wordElement)
                 break
@@ -328,6 +356,7 @@ def process_pdf(idx, page, png) -> Element:
         font_size = np.median(font_sizes)
         p.meta_data['font_size'] = font_size
 
+    # Parent element
     return Element(
         type='page',
         top_left=(0, 0),
@@ -388,6 +417,10 @@ def analyze_pdf(path: pathlib.Path):
         children.append(child)
 
     parent_element.children = children
+
+    # Compute the total words for each parent element
+    compute_total_words(parent_element)
+    generate_address(parent_element, '0')
 
     # Typing the paragraphs
     # subtyping_paragraphs(parent_element)

@@ -19,7 +19,7 @@ with open(output_fp, 'w') as f:
 
 for id, page in enumerate(results.images):
     page_element = results.element.children[id]
-    webpdfparse.draw_element(page, page_element, height=page.shape[0], width=page.shape[1])
+    webpdfparse.draw_element(page, page_element, height=page.shape[0], width=page.shape[1], subtype=['paragraph'])
     cv2.imshow(f"Page {id}", imutils.resize(page, width=700))
     # cv2.imwrite(str(CWD / f"page_{id}.png"), page)
 
